@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 import requests
 import os
-import slackbot_settings
-from slacker import Slacker
+# import slackbot_settings
+# from slacker import Slacker
+import psycopg2
+import datetime
 
 def main():
+    conn = psycopg2.connect('')
+    cur = conn.cursor()
     exist_time = ""
+    d = datetime.datetime.today()
+    year = d.strftime("%Y")
+    month = d.strftime("%m")
     time_file_name = 'time_info.txt'
     user_agent = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.108 Safari/537.36'
     headers = { 'User-Agent' : user_agent }
@@ -49,8 +56,20 @@ def main():
                 else:
                     message += "\n詳細不明"
                 print(message)
-                slack = Slacker(slackbot_settings.API_TOKEN)
-                slack.chat.post_message('weather', message, as_user=True)
+                occurrence_time = year + "年" + month + "月" + info['time']
+                cur.execute("SELECT * FROM quake where occurrence_time = '" + occurrence_time + "'" )
+                rows = cur.rowcount
+                if rows != 0:
+                    print("update")
+                    cur.execute("update quake set occurrence_time=%s,maxscale=%s,tsunami=%s,epicenter=%s,depth=%s,magnitude=%s where occurrence_time = %s" , (occurrence_time,maxScale_info,domesticTsunami_info,info_hypocenter['name'],info_hypocenter['depth'],info_hypocenter['magnitude'],occurrence_time))
+                    conn.commit()
+                else:
+                    print("insert")
+                    cur.execute('INSERT INTO quake VALUES (%s,%s,%s,%s,%s,%s)', (occurrence_time,maxScale_info,domesticTsunami_info,info_hypocenter['name'],info_hypocenter['depth'],info_hypocenter['magnitude']))
+                    conn.commit()
+
+                #slack = Slacker(slackbot_settings.API_TOKEN)
+                #slack.chat.post_message('weather', message, as_user=True)
 
 def scale(scale_value):
     scale_info = ""
